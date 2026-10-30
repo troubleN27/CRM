@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "office-crm": {
+      "type": "http",
+      "url": "http://localhost:3100/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_MCP_SECRET_KEY"
+      }
+    }
+  }
+}

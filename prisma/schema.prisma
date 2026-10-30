@@ -1,0 +1,254 @@
+// Модели описаны в SPEC.md, раздел 1.
+// Всё время хранится в UTC, дата рабочего дня — по America/Los_Angeles.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}
+
+enum Locale {
+  ru
+  uz
+}
+
+enum EmployeeStatus {
+  OFF_WORK
+  OUT_OF_OFFICE
+  IN_OFFICE
+}
+
+enum RequestStatus {
+  NEW
+  ASSIGNED
+  IN_PROGRESS
+  DONE
+}
+
+enum ZoneType {
+  WORK
+  MEETING
+  KITCHEN
+  OTHER
+}
+
+enum EventType {
+  IN
+  OUT
+}
+
+enum OutReason {
+  LUNCH
+  CLIENT_VISIT
+  PERSONAL
+  END_OF_DAY
+}
+
+enum EventSource {
+  EMPLOYEE
+  ADMIN_FIX
+  SYSTEM
+}
+
+enum WorkDayEndType {
+  END_OF_DAY
+  AUTO_CLOSED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  login        String   @unique
+  passwordHash String
+  role         Role     @default(EMPLOYEE)
+  locale       Locale   @default(ru)
+  employeeId   String   @unique
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  auditLogs    AuditLog[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Employee {
+  id        String         @id @default(cuid())
+  firstName String
+  lastName  String
+  position  String
+  phone     String?
+  email     String?
+  deskId    String?        @unique
+  desk      Desk?          @relation(fields: [deskId], references: [id], onDelete: SetNull)
+  status       EmployeeStatus @default(OFF_WORK)
+  isActive     Boolean        @default(true)
+  isGpsTracked Boolean        @default(false)
+  user         User?
+  requests  Request[]
+  workDays  WorkDay[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+// Координаты мест и зон — доли от ширины и высоты картинки плана (0…1),
+// поэтому они не съезжают, если план показан в другом размере.
+model Desk {
+  id        String    @id @default(cuid())
+  code      String    @unique // номер места
+  pcNumber  String?   @unique // номер компьютера, например PC-07
+  x         Float // центр места
+  y         Float
+  employee  Employee?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Zone {
+  id        String   @id @default(cuid())
+  name      String
+  type      ZoneType @default(OTHER)
+  x         Float // левый верхний угол
+  y         Float
+  width     Float
+  height    Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Картинка плана офиса. Хранится одна, последняя загруженная.
+model OfficePlan {
+  id        String   @id @default(cuid())
+  mimeType  String
+  data      Bytes
+  width     Int
+  height    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Client {
+  id        String          @id @default(cuid())
+  name      String
+  phone     String
+  address   String
+  lat       Float
+  lng       Float
+  notes     String?
+  contacts  ContactPerson[]
+  requests  Request[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model ContactPerson {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  fullName  String
+  phone     String?
+  email     String?
+  role      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Request {
+  id          String            @id @default(cuid())
+  number      Int               @unique @default(autoincrement())
+  clientId    String
+  client      Client            @relation(fields: [clientId], references: [id])
+  description String
+  assigneeId  String?
+  assignee    Employee?         @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  status      RequestStatus     @default(NEW)
+  dueDate     DateTime?         @db.Date
+  events      AttendanceEvent[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model WorkDay {
+  id            String            @id @default(cuid())
+  employeeId    String
+  employee      Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date          DateTime          @db.Date
+  firstInAt     DateTime
+  endedAt       DateTime?
+  endType       WorkDayEndType?
+  isLate        Boolean           @default(false)
+  lateMinutes   Int               @default(0)
+  workedMinutes Int               @default(0)
+  events        AttendanceEvent[]
+  locations     LocationPoint[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@unique([employeeId, date])
+}
+
+model AttendanceEvent {
+  id        String      @id @default(cuid())
+  workDayId String
+  workDay   WorkDay     @relation(fields: [workDayId], references: [id], onDelete: Cascade)
+  type      EventType
+  reason    OutReason?
+  requestId String?
+  request   Request?    @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  at        DateTime
+  source    EventSource @default(EMPLOYEE)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+// Все позиции из любых источников (имитация, датчики в офисе, телефон) — одна таблица.
+// OFFICE — точка на плане (x, y в долях картинки), CITY — точка на карте (lat, lng).
+model LocationPoint {
+  id        String       @id @default(cuid())
+  workDayId String
+  workDay   WorkDay      @relation(fields: [workDayId], references: [id], onDelete: Cascade)
+  kind      LocationKind @default(CITY)
+  x         Float?
+  y         Float?
+  lat       Float?
+  lng       Float?
+  accuracy  Float?
+  source    String       @default("phone")
+  at        DateTime
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([workDayId, at])
+}
+
+enum LocationKind {
+  OFFICE
+  CITY
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  // Кто изменил: пользователь сайта или, если пусто, actorLabel (например «ai-agent»).
+  actorUserId String?
+  actor       User?       @relation(fields: [actorUserId], references: [id])
+  actorLabel  String?
+  entity      String
+  entityId    String
+  action      AuditAction
+  before      Json?
+  after       Json?
+  reason      String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}

@@ -1,0 +1,171 @@
+@import "tailwindcss";
+
+/*
+  Дизайн-система «Strict Dark»: строгий тёмный интерфейс без белого, градиентов и размытых теней.
+  Единственный источник цветов — эти токены (их же читает scripts/design-check.mjs).
+  Глубина слоёв — ступенями фона и рамками 1px, не тенями.
+*/
+@theme {
+  /* Поверхности */
+  --color-canvas: #090a0c;
+  --color-surface: #111317;
+  --color-elevated: #181b20;
+  --color-pressed: #20242b;
+  --color-line: #22262e;
+  --color-line-strong: #313742;
+
+  /* Текст и иконки */
+  --color-fg: #9ba1ae;
+  --color-fg-2: #7e8694;
+  --color-fg-3: #404652;
+
+  /* Бренд — прусский синий */
+  --color-brand: #1e3a5f;
+  --color-brand-hover: #19324f;
+  --color-brand-fg: #7b97bd;
+  /* Текст на заливке бренда (кнопки) */
+  --color-brand-ink: #a3a9b6;
+
+  /* Семантика: фон / текст */
+  --color-success-bg: #193829;
+  --color-success: #76a986;
+  --color-warning-bg: #3d2e14;
+  --color-warning: #b8924d;
+  --color-danger-bg: #3d1a1a;
+  --color-danger: #cc7a7a;
+  --color-info-bg: #1a2a40;
+  --color-info: #7b97bd;
+
+  /* Шрифты: Geist для интерфейса, Geist Mono для чисел, дат и ID */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Движение */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    background: var(--color-canvas);
+  }
+  body {
+    @apply bg-canvas font-sans text-fg antialiased;
+    font-weight: 400;
+  }
+  /* Иерархия — размером и цветом, без жирного начертания */
+  b,
+  strong,
+  th,
+  h1,
+  h2,
+  h3 {
+    font-weight: 500;
+  }
+  ::selection {
+    background: var(--color-brand);
+    color: var(--color-fg);
+  }
+  :focus-visible {
+    outline: 1px solid var(--color-line-strong);
+    outline-offset: 2px;
+  }
+  input,
+  select,
+  textarea {
+    color-scheme: dark;
+  }
+  ::placeholder {
+    color: var(--color-fg-3);
+  }
+}
+
+@layer utilities {
+  /* Числа, даты, ID — моноширинные с табличными цифрами */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Появление окон: окно «вырастает» сверху, фон проявляется */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes palette-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.96) translateY(-6px);
+  }
+}
+
+/* Скелетоны: мягкая пульсация прозрачности 40–70%, без бликов */
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+.skeleton {
+  background: var(--color-elevated);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.6s var(--ease-out-soft) infinite;
+}
+
+/* Lenis: инерционный скролл */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+/* Тёмная карта города: тайлы OpenStreetMap затемнены фильтром, без сторонних сервисов */
+.leaflet-container {
+  background: var(--color-surface) !important;
+  font-family: var(--font-sans) !important;
+}
+.leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.85) saturate(0.4);
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--color-elevated) !important;
+  color: var(--color-fg) !important;
+  border: 1px solid var(--color-line-strong);
+  box-shadow: none !important;
+  border-radius: 6px !important;
+}
+.leaflet-popup-close-button {
+  color: var(--color-fg-2) !important;
+}
+.leaflet-bar a {
+  background: var(--color-elevated) !important;
+  color: var(--color-fg) !important;
+  border-color: var(--color-line) !important;
+}
+.leaflet-control-attribution {
+  background: var(--color-surface) !important;
+  color: var(--color-fg-2) !important;
+}
+.leaflet-control-attribution a {
+  color: var(--color-brand-fg) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

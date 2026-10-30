@@ -1,0 +1,34 @@
+# Секреты — никогда не коммитить
+.env
+.env.*
+!.env.example
+.mcp.json
+!.mcp.json.example
+
+# Данные встроенной базы
+.pgdata/
+
+# Зависимости и сборка
+next-env.d.ts
+*.tsbuildinfo
+node_modules/
+.next/
+out/
+build/
+coverage/
+
+# Тесты
+playwright-report/
+test-results/
+
+# Система и редакторы
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+
+# Имитация движения
+.sim.pid
+.sim.log
+*.xlsx
